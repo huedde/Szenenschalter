@@ -138,10 +138,7 @@ class SceneDimmerCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // Bei Änderung von hass neu rendern, damit die Entity-Picker korrekt initialisiert werden
-    if (this.isConnected) {
-      this._render();
-    }
+    if (this.isConnected) this._render();
   }
 
   _render() {
@@ -168,6 +165,13 @@ class SceneDimmerCardEditor extends HTMLElement {
     });
     titleRow.appendChild(titleLabel);
     titleRow.appendChild(titleInput);
+
+    // Kurze Erklärung
+    const info = document.createElement("p");
+    info.textContent =
+      "Füge unten Zeilen hinzu und wähle für jede Zeile eine Szene und eine Leuchte aus.";
+    info.style.fontSize = "0.85rem";
+    info.style.opacity = "0.8";
 
     // Tabellenkopf
     const table = document.createElement("table");
@@ -259,11 +263,17 @@ class SceneDimmerCardEditor extends HTMLElement {
 
     table.appendChild(tbody);
 
-    // Button zum Hinzufügen
-    const addBtn = document.createElement("mwc-button");
-    addBtn.label = "Szene hinzufügen";
-    addBtn.icon = "mdi:plus";
+    // Button zum Hinzufügen (normales HTML-Button-Element, damit es in jedem Setup sicher sichtbar ist)
+    const addBtn = document.createElement("button");
+    addBtn.textContent = "Szene hinzufügen";
     addBtn.style.marginTop = "8px";
+    addBtn.style.alignSelf = "flex-start";
+    addBtn.style.padding = "6px 12px";
+    addBtn.style.borderRadius = "4px";
+    addBtn.style.border = "1px solid var(--primary-color)";
+    addBtn.style.background = "var(--primary-color)";
+    addBtn.style.color = "var(--text-primary-color, #fff)";
+    addBtn.style.cursor = "pointer";
     addBtn.addEventListener("click", () => {
       this._config.entities.push({
         name: "",
@@ -275,6 +285,7 @@ class SceneDimmerCardEditor extends HTMLElement {
     });
 
     root.appendChild(titleRow);
+    root.appendChild(info);
     root.appendChild(table);
     root.appendChild(addBtn);
     this.appendChild(root);
