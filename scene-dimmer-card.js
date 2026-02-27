@@ -192,6 +192,14 @@ class SceneDimmerCardEditor extends HTMLElement {
 
     const tbody = document.createElement("tbody");
 
+    // Alle Scene- und Light-Entities aus hass sammeln (für Dropdowns)
+    const sceneOptions = this._hass
+      ? Object.keys(this._hass.states).filter((id) => id.startsWith("scene."))
+      : [];
+    const lightOptions = this._hass
+      ? Object.keys(this._hass.states).filter((id) => id.startsWith("light."))
+      : [];
+
     this._config.entities.forEach((item, index) => {
       const row = document.createElement("tr");
 
@@ -208,39 +216,74 @@ class SceneDimmerCardEditor extends HTMLElement {
       nameCell.appendChild(nameInput);
 
       const sceneCell = document.createElement("td");
-      const scenePicker = document.createElement("ha-entity-picker");
-      scenePicker.hass = this._hass;
-      scenePicker.value = item.scene || "";
-      scenePicker.includeDomains = ["scene"];
-      scenePicker.label = "Szene wählen";
-      scenePicker.style.width = "100%";
-      scenePicker.addEventListener("value-changed", (e) => {
-        const value = e.detail.value;
+      const sceneSelect = document.createElement("select");
+      sceneSelect.style.width = "100%";
+      sceneSelect.style.padding = "4px 8px";
+      sceneSelect.style.borderRadius = "4px";
+      sceneSelect.style.border = "1px solid var(--divider-color)";
+
+      const emptySceneOpt = document.createElement("option");
+      emptySceneOpt.value = "";
+      emptySceneOpt.textContent = "Szene auswählen...";
+      sceneSelect.appendChild(emptySceneOpt);
+
+      sceneOptions.forEach((id) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        const friendly =
+          this._hass.states[id].attributes.friendly_name || id;
+        opt.textContent = friendly;
+        if (item.scene === id) opt.selected = true;
+        sceneSelect.appendChild(opt);
+      });
+
+      sceneSelect.addEventListener("change", (e) => {
+        const value = e.target.value || "";
         this._config.entities[index].scene = value;
-        // Wenn kein Name gesetzt ist, übernehme den friendly_name der Szene
-        if (!this._config.entities[index].name && this._hass && value && this._hass.states[value]) {
-          this._config.entities[index].name = this._hass.states[value].attributes.friendly_name || value;
+        if (!this._config.entities[index].name && value && this._hass) {
+          const st = this._hass.states[value];
+          if (st) {
+            this._config.entities[index].name =
+              st.attributes.friendly_name || value;
+          }
         }
         this._fireConfigChanged();
         this._render();
       });
+
       sceneCell.style.padding = "4px 8px";
-      sceneCell.appendChild(scenePicker);
+      sceneCell.appendChild(sceneSelect);
 
       const lightCell = document.createElement("td");
-      const lightPicker = document.createElement("ha-entity-picker");
-      lightPicker.hass = this._hass;
-      lightPicker.value = item.light || "";
-      lightPicker.includeDomains = ["light"];
-      lightPicker.label = "Leuchte wählen";
-      lightPicker.style.width = "100%";
-      lightPicker.addEventListener("value-changed", (e) => {
-        const value = e.detail.value;
+      const lightSelect = document.createElement("select");
+      lightSelect.style.width = "100%";
+      lightSelect.style.padding = "4px 8px";
+      lightSelect.style.borderRadius = "4px";
+      lightSelect.style.border = "1px solid var(--divider-color)";
+
+      const emptyLightOpt = document.createElement("option");
+      emptyLightOpt.value = "";
+      emptyLightOpt.textContent = "Leuchte auswählen...";
+      lightSelect.appendChild(emptyLightOpt);
+
+      lightOptions.forEach((id) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        const friendly =
+          this._hass.states[id].attributes.friendly_name || id;
+        opt.textContent = friendly;
+        if (item.light === id) opt.selected = true;
+        lightSelect.appendChild(opt);
+      });
+
+      lightSelect.addEventListener("change", (e) => {
+        const value = e.target.value || "";
         this._config.entities[index].light = value;
         this._fireConfigChanged();
       });
+
       lightCell.style.padding = "4px 8px";
-      lightCell.appendChild(lightPicker);
+      lightCell.appendChild(lightSelect);
 
       const actionsCell = document.createElement("td");
       actionsCell.style.padding = "4px 8px";
