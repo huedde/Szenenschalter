@@ -3,6 +3,7 @@ class SceneDimmerCard extends HTMLElement {
     super();
     this._isInteracting = false;
     this._sliderEl = null;
+    this._selectEl = null;
   }
 
   static getConfigElement() {
@@ -24,13 +25,28 @@ class SceneDimmerCard extends HTMLElement {
     this._selectedIndex = 0;
     this.innerHTML = "";
     this._sliderEl = null;
+    this._selectEl = null;
   }
 
   set hass(hass) {
     this._hass = hass;
     if (!this._config) return;
-    // Während Interaktion nie neu rendern
+    // Während Interaktion nie neu rendern oder Werte ändern
     if (this._isInteracting) return;
+
+    // Falls ein Status-Helper hinterlegt ist, Auswahl aus dessen Zustand ableiten
+    if (this._config.state_entity && this._hass.states[this._config.state_entity]) {
+      const helperState = this._hass.states[this._config.state_entity].state;
+      const idx = this._config.entities.findIndex(
+        (e) => (e.name || "").toString() === helperState.toString()
+      );
+      if (idx !== -1) {
+        this._selectedIndex = idx;
+        if (this._selectEl) {
+          this._selectEl.value = String(idx);
+        }
+      }
+    }
 
     // Wenn noch keine UI aufgebaut wurde, einmalig rendern,
     // danach nur noch den Slider-Wert aktualisieren
@@ -90,11 +106,24 @@ class SceneDimmerCard extends HTMLElement {
     select.addEventListener("touchstart", startInteraction, { passive: true });
     select.addEventListener("touchend", endInteraction);
 
+    this._selectEl = select;
+
+    // Falls Status-Helper vorhanden ist, initiale Auswahl daraus bestimmen
+    let initialIndex = this._selectedIndex;
+    if (this._config.state_entity && this._hass.states[this._config.state_entity]) {
+      const helperState = this._hass.states[this._config.state_entity].state;
+      const idx = this._config.entities.findIndex(
+        (e) => (e.name || "").toString() === helperState.toString()
+      );
+      if (idx !== -1) initialIndex = idx;
+    }
+    this._selectedIndex = initialIndex;
+
     this._config.entities.forEach((item, index) => {
       const opt = document.createElement("option");
       opt.value = String(index);
       opt.textContent = item.name || item.scene;
-      if (index === this._selectedIndex) opt.selected = true;
+      if (index === initialIndex) opt.selected = true;
       select.appendChild(opt);
     });
 
@@ -102,7 +131,16 @@ class SceneDimmerCard extends HTMLElement {
       const index = parseInt(e.target.value, 10);
       this._selectedIndex = index;
       const cfg = this._config.entities[index];
-      if (cfg && cfg.scene) {
+
+      // Wenn ein Status-Helper konfiguriert ist, diesen setzen,
+      // ansonsten direkt die Szene schalten
+      if (this._config.state_entity && cfg && (cfg.name || cfg.scene)) {
+        const option = cfg.name || cfg.scene;
+        this._hass.callService("input_select", "select_option", {
+          entity_id: this._config.state_entity,
+          option,
+        });
+      } else if (cfg && cfg.scene) {
         this._hass.callService("scene", "turn_on", {
           entity_id: cfg.scene,
         });
@@ -236,10 +274,31 @@ class SceneDimmerCardEditor extends HTMLElement {
     titleRow.appendChild(titleLabel);
     titleRow.appendChild(titleInput);
 
+    // Status-Helper (optional)
+    const helperRow = document.createElement("div");
+    const helperLabel = document.createElement("label");
+    helperLabel.textContent = "Status-Helper (optional, input_select)";
+    helperLabel.style.display = "block";
+    helperLabel.style.margin = "8px 0 4px";
+    const helperInput = document.createElement("input");
+    helperInput.type = "text";
+    helperInput.placeholder = "z. B. input_select.439_halle_eg_c0_24_szene_status";
+    helperInput.value = this._config.state_entity || "";
+    helperInput.style.width = "100%";
+    helperInput.addEventListener("change", (e) => {
+      const cfg = this._cloneConfig();
+      cfg.state_entity = e.target.value.trim();
+      this._config = cfg;
+      this._fireConfigChanged();
+    });
+    helperRow.appendChild(helperLabel);
+    helperRow.appendChild(helperInput);
+
     // Kurze Erklärung
     const info = document.createElement("p");
     info.textContent =
-      "Füge unten Zeilen hinzu und wähle für jede Zeile eine Szene und eine Leuchte aus.";
+      "Füge unten Zeilen hinzu und wähle für jede Zeile eine Szene und eine Leuchte aus. " +
+      "Wenn ein Status-Helper gesetzt ist, bleibt die Szenenauswahl stabil und kann auch vom KNX-Taster aktualisiert werden.";
     info.style.fontSize = "0.85rem";
     info.style.opacity = "0.8";
 
@@ -411,6 +470,7 @@ class SceneDimmerCardEditor extends HTMLElement {
     });
 
     root.appendChild(titleRow);
+    root.appendChild(helperRow);
     root.appendChild(info);
     root.appendChild(table);
     root.appendChild(addBtn);
