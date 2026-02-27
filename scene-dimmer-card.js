@@ -346,3 +346,12 @@ class SceneDimmerCardEditor extends HTMLElement {
 
 customElements.define("scene-dimmer-card-editor", SceneDimmerCardEditor);
 
+// Card-Metadaten für den Lovelace-Karten-Dialog
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "scene-dimmer-card",
+  name: "Szenenschalter",
+  description:
+    "Wählt Szenen per Dropdown und steuert die Helligkeit einer verknüpften Leuchte."
+});
+
