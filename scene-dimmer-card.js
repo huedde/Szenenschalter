@@ -1,9 +1,20 @@
 class SceneDimmerCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement("scene-dimmer-card-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      title: "Szenenschalter",
+      entities: [],
+    };
+  }
+
   setConfig(config) {
-    if (!config.entities || !Array.isArray(config.entities) || config.entities.length === 0) {
-      throw new Error("entities ist erforderlich und muss ein Array sein.");
+    this._config = config || {};
+    if (!Array.isArray(this._config.entities)) {
+      this._config.entities = [];
     }
-    this._config = config;
     this._selectedIndex = 0;
     this.innerHTML = "";
   }
@@ -114,4 +125,181 @@ class SceneDimmerCard extends HTMLElement {
 }
 
 customElements.define("scene-dimmer-card", SceneDimmerCard);
+
+// Einfache Konfigurationsoberfläche für den visuellen Editor
+class SceneDimmerCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    if (!this._config.entities) {
+      this._config.entities = [];
+    }
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this.isConnected) this._render();
+  }
+
+  _render() {
+    this.innerHTML = "";
+
+    const root = document.createElement("div");
+    root.style.display = "flex";
+    root.style.flexDirection = "column";
+    root.style.gap = "12px";
+
+    // Titel
+    const titleRow = document.createElement("div");
+    const titleLabel = document.createElement("label");
+    titleLabel.textContent = "Kartentitel";
+    titleLabel.style.display = "block";
+    titleLabel.style.marginBottom = "4px";
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.value = this._config.title || "";
+    titleInput.style.width = "100%";
+    titleInput.addEventListener("change", (e) => {
+      this._config.title = e.target.value;
+      this._fireConfigChanged();
+    });
+    titleRow.appendChild(titleLabel);
+    titleRow.appendChild(titleInput);
+
+    // Kurze Erklärung
+    const info = document.createElement("p");
+    info.textContent =
+      "Füge unten Zeilen hinzu und wähle für jede Zeile eine Szene und eine Leuchte aus.";
+    info.style.fontSize = "0.85rem";
+    info.style.opacity = "0.8";
+
+    // Tabellenkopf
+    const table = document.createElement("table");
+    table.style.width = "100%";
+    table.style.borderCollapse = "collapse";
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    ["Name", "Szene (entity_id)", "Leuchte (entity_id)", ""].forEach((text) => {
+      const th = document.createElement("th");
+      th.textContent = text;
+      th.style.textAlign = "left";
+      th.style.padding = "4px 8px";
+      th.style.borderBottom = "1px solid var(--divider-color)";
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    this._config.entities.forEach((item, index) => {
+      const row = document.createElement("tr");
+
+      const nameCell = document.createElement("td");
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = item.name || "";
+      nameInput.style.width = "100%";
+      nameInput.addEventListener("change", (e) => {
+        this._config.entities[index].name = e.target.value;
+        this._fireConfigChanged();
+      });
+      nameCell.style.padding = "4px 8px";
+      nameCell.appendChild(nameInput);
+
+      const sceneCell = document.createElement("td");
+      const scenePicker = document.createElement("ha-entity-picker");
+      scenePicker.hass = this._hass;
+      scenePicker.value = item.scene || "";
+      scenePicker.includeDomains = ["scene"];
+      scenePicker.label = "Szene wählen";
+      scenePicker.style.width = "100%";
+      scenePicker.addEventListener("value-changed", (e) => {
+        const value = e.detail.value;
+        this._config.entities[index].scene = value;
+        // Wenn kein Name gesetzt ist, übernehme den friendly_name der Szene
+        if (!this._config.entities[index].name && this._hass && value && this._hass.states[value]) {
+          this._config.entities[index].name = this._hass.states[value].attributes.friendly_name || value;
+        }
+        this._fireConfigChanged();
+        this._render();
+      });
+      sceneCell.style.padding = "4px 8px";
+      sceneCell.appendChild(scenePicker);
+
+      const lightCell = document.createElement("td");
+      const lightPicker = document.createElement("ha-entity-picker");
+      lightPicker.hass = this._hass;
+      lightPicker.value = item.light || "";
+      lightPicker.includeDomains = ["light"];
+      lightPicker.label = "Leuchte wählen";
+      lightPicker.style.width = "100%";
+      lightPicker.addEventListener("value-changed", (e) => {
+        const value = e.detail.value;
+        this._config.entities[index].light = value;
+        this._fireConfigChanged();
+      });
+      lightCell.style.padding = "4px 8px";
+      lightCell.appendChild(lightPicker);
+
+      const actionsCell = document.createElement("td");
+      actionsCell.style.padding = "4px 8px";
+      const deleteBtn = document.createElement("mwc-icon-button");
+      deleteBtn.icon = "mdi:delete";
+      deleteBtn.title = "Zeile löschen";
+      deleteBtn.addEventListener("click", () => {
+        this._config.entities.splice(index, 1);
+        this._fireConfigChanged();
+        this._render();
+      });
+      actionsCell.appendChild(deleteBtn);
+
+      row.appendChild(nameCell);
+      row.appendChild(sceneCell);
+      row.appendChild(lightCell);
+      row.appendChild(actionsCell);
+      tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+
+    // Button zum Hinzufügen (normales HTML-Button-Element, damit es in jedem Setup sicher sichtbar ist)
+    const addBtn = document.createElement("button");
+    addBtn.textContent = "Szene hinzufügen";
+    addBtn.style.marginTop = "8px";
+    addBtn.style.alignSelf = "flex-start";
+    addBtn.style.padding = "6px 12px";
+    addBtn.style.borderRadius = "4px";
+    addBtn.style.border = "1px solid var(--primary-color)";
+    addBtn.style.background = "var(--primary-color)";
+    addBtn.style.color = "var(--text-primary-color, #fff)";
+    addBtn.style.cursor = "pointer";
+    addBtn.addEventListener("click", () => {
+      this._config.entities.push({
+        name: "",
+        scene: "",
+        light: ""
+      });
+      this._fireConfigChanged();
+      this._render();
+    });
+
+    root.appendChild(titleRow);
+    root.appendChild(info);
+    root.appendChild(table);
+    root.appendChild(addBtn);
+    this.appendChild(root);
+  }
+
+  _fireConfigChanged() {
+    const event = new CustomEvent("config-changed", {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true
+    });
+    this.dispatchEvent(event);
+  }
+}
+
+customElements.define("scene-dimmer-card-editor", SceneDimmerCardEditor);
 
