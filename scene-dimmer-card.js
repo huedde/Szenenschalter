@@ -1,4 +1,9 @@
 class SceneDimmerCard extends HTMLElement {
+  constructor() {
+    super();
+    this._isInteracting = false;
+  }
+
   static getConfigElement() {
     return document.createElement("scene-dimmer-card-editor");
   }
@@ -22,6 +27,8 @@ class SceneDimmerCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._config) return;
+    // Karte nicht neu aufbauen, während der Nutzer mit Dropdown/Slider interagiert
+    if (this._isInteracting) return;
     this._render();
   }
 
@@ -56,6 +63,14 @@ class SceneDimmerCard extends HTMLElement {
     select.style.background = "var(--primary-background-color)";
     select.style.color = "var(--primary-text-color)";
 
+    // Interaktionszustand für set hass()
+    select.addEventListener("focus", () => {
+      this._isInteracting = true;
+    });
+    select.addEventListener("blur", () => {
+      this._isInteracting = false;
+    });
+
     this._config.entities.forEach((item, index) => {
       const opt = document.createElement("option");
       opt.value = String(index);
@@ -88,6 +103,13 @@ class SceneDimmerCard extends HTMLElement {
     slider.style.width = "100%";
 
     this._updateSliderValue(slider);
+
+    slider.addEventListener("focus", () => {
+      this._isInteracting = true;
+    });
+    slider.addEventListener("blur", () => {
+      this._isInteracting = false;
+    });
 
     slider.addEventListener("input", (e) => {
       const value = parseInt(e.target.value, 10);
