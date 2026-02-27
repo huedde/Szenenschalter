@@ -2,6 +2,7 @@ class SceneDimmerCard extends HTMLElement {
   constructor() {
     super();
     this._isInteracting = false;
+    this._sliderEl = null;
   }
 
   static getConfigElement() {
@@ -22,14 +23,22 @@ class SceneDimmerCard extends HTMLElement {
     }
     this._selectedIndex = 0;
     this.innerHTML = "";
+    this._sliderEl = null;
   }
 
   set hass(hass) {
     this._hass = hass;
     if (!this._config) return;
-    // Karte nicht neu aufbauen, während der Nutzer mit Dropdown/Slider interagiert
+    // Während Interaktion nie neu rendern
     if (this._isInteracting) return;
-    this._render();
+
+    // Wenn noch keine UI aufgebaut wurde, einmalig rendern,
+    // danach nur noch den Slider-Wert aktualisieren
+    if (!this._sliderEl) {
+      this._render();
+    } else {
+      this._updateSliderValue(this._sliderEl);
+    }
   }
 
   getCardSize() {
@@ -112,6 +121,7 @@ class SceneDimmerCard extends HTMLElement {
     slider.step = "1";
     slider.style.width = "100%";
 
+    this._sliderEl = slider;
     this._updateSliderValue(slider);
 
     const startSliderInteraction = () => {
