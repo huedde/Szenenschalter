@@ -129,10 +129,13 @@ customElements.define("scene-dimmer-card", SceneDimmerCard);
 // Einfache Konfigurationsoberfläche für den visuellen Editor
 class SceneDimmerCardEditor extends HTMLElement {
   setConfig(config) {
-    this._config = config || {};
-    if (!this._config.entities) {
-      this._config.entities = [];
-    }
+    const base = config || {};
+    this._config = {
+      ...base,
+      entities: Array.isArray(base.entities)
+        ? base.entities.map((e) => ({ ...e }))
+        : [],
+    };
     this._render();
   }
 
@@ -160,7 +163,9 @@ class SceneDimmerCardEditor extends HTMLElement {
     titleInput.value = this._config.title || "";
     titleInput.style.width = "100%";
     titleInput.addEventListener("change", (e) => {
-      this._config.title = e.target.value;
+      const cfg = this._cloneConfig();
+      cfg.title = e.target.value;
+      this._config = cfg;
       this._fireConfigChanged();
     });
     titleRow.appendChild(titleLabel);
@@ -209,7 +214,9 @@ class SceneDimmerCardEditor extends HTMLElement {
       nameInput.value = item.name || "";
       nameInput.style.width = "100%";
       nameInput.addEventListener("change", (e) => {
-        this._config.entities[index].name = e.target.value;
+        const cfg = this._cloneConfig();
+        cfg.entities[index].name = e.target.value;
+        this._config = cfg;
         this._fireConfigChanged();
       });
       nameCell.style.padding = "4px 8px";
@@ -239,16 +246,16 @@ class SceneDimmerCardEditor extends HTMLElement {
 
       sceneSelect.addEventListener("change", (e) => {
         const value = e.target.value || "";
-        this._config.entities[index].scene = value;
-        if (!this._config.entities[index].name && value && this._hass) {
+        const cfg = this._cloneConfig();
+        cfg.entities[index].scene = value;
+        if (!cfg.entities[index].name && value && this._hass) {
           const st = this._hass.states[value];
           if (st) {
-            this._config.entities[index].name =
-              st.attributes.friendly_name || value;
+            cfg.entities[index].name = st.attributes.friendly_name || value;
           }
         }
+        this._config = cfg;
         this._fireConfigChanged();
-        this._render();
       });
 
       sceneCell.style.padding = "4px 8px";
@@ -278,7 +285,9 @@ class SceneDimmerCardEditor extends HTMLElement {
 
       lightSelect.addEventListener("change", (e) => {
         const value = e.target.value || "";
-        this._config.entities[index].light = value;
+        const cfg = this._cloneConfig();
+        cfg.entities[index].light = value;
+        this._config = cfg;
         this._fireConfigChanged();
       });
 
@@ -291,9 +300,10 @@ class SceneDimmerCardEditor extends HTMLElement {
       deleteBtn.icon = "mdi:delete";
       deleteBtn.title = "Zeile löschen";
       deleteBtn.addEventListener("click", () => {
-        this._config.entities.splice(index, 1);
+        const cfg = this._cloneConfig();
+        cfg.entities.splice(index, 1);
+        this._config = cfg;
         this._fireConfigChanged();
-        this._render();
       });
       actionsCell.appendChild(deleteBtn);
 
@@ -318,13 +328,14 @@ class SceneDimmerCardEditor extends HTMLElement {
     addBtn.style.color = "var(--text-primary-color, #fff)";
     addBtn.style.cursor = "pointer";
     addBtn.addEventListener("click", () => {
-      this._config.entities.push({
+      const cfg = this._cloneConfig();
+      cfg.entities.push({
         name: "",
         scene: "",
-        light: ""
+        light: "",
       });
+      this._config = cfg;
       this._fireConfigChanged();
-      this._render();
     });
 
     root.appendChild(titleRow);
@@ -334,9 +345,20 @@ class SceneDimmerCardEditor extends HTMLElement {
     this.appendChild(root);
   }
 
+  _cloneConfig() {
+    const base = this._config || {};
+    return {
+      ...base,
+      entities: Array.isArray(base.entities)
+        ? base.entities.map((e) => ({ ...e }))
+        : [],
+    };
+  }
+
   _fireConfigChanged() {
+    const cfg = this._cloneConfig();
     const event = new CustomEvent("config-changed", {
-      detail: { config: this._config },
+      detail: { config: cfg },
       bubbles: true,
       composed: true
     });
