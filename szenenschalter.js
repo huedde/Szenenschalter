@@ -148,6 +148,13 @@ customElements.define("scene-dimmer-card", SceneDimmerCard);
 
 // Einfache Konfigurationsoberfläche für den visuellen Editor
 class SceneDimmerCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._hass = null;
+    this._config = { entities: [] };
+    this._hasRenderedOnce = false;
+  }
+
   setConfig(config) {
     const base = config || {};
     this._config = {
@@ -161,7 +168,10 @@ class SceneDimmerCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this.isConnected) this._render();
+    if (!this._hasRenderedOnce && this.isConnected) {
+      this._hasRenderedOnce = true;
+      this._render();
+    }
   }
 
   _render() {
