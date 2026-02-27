@@ -138,6 +138,10 @@ class SceneDimmerCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // Bei Änderung von hass neu rendern, damit die Entity-Picker korrekt initialisiert werden
+    if (this.isConnected) {
+      this._render();
+    }
   }
 
   _render() {
