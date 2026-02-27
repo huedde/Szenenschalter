@@ -115,3 +115,11 @@ class SceneDimmerCard extends HTMLElement {
 
 customElements.define("scene-dimmer-card", SceneDimmerCard);
 
+// Metadata für Home Assistant Card-Picker (Custom Card)
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "scene-dimmer-card",
+  name: "Szenenschalter",
+  description: "Szenen-Schalter mit Dimmer-Slider für verknüpfte Leuchte"
+});
+
