@@ -63,13 +63,23 @@ class SceneDimmerCard extends HTMLElement {
     select.style.background = "var(--primary-background-color)";
     select.style.color = "var(--primary-text-color)";
 
-    // Interaktionszustand für set hass()
-    select.addEventListener("focus", () => {
+    // Interaktionszustand für set hass() – auch für Touch/Pointer
+    const startInteraction = () => {
       this._isInteracting = true;
-    });
-    select.addEventListener("blur", () => {
-      this._isInteracting = false;
-    });
+    };
+    const endInteraction = () => {
+      // kleinen Delay, damit die Auswahl sicher abgeschlossen ist
+      setTimeout(() => {
+        this._isInteracting = false;
+      }, 200);
+    };
+
+    select.addEventListener("focus", startInteraction);
+    select.addEventListener("blur", endInteraction);
+    select.addEventListener("mousedown", startInteraction);
+    select.addEventListener("mouseup", endInteraction);
+    select.addEventListener("touchstart", startInteraction, { passive: true });
+    select.addEventListener("touchend", endInteraction);
 
     this._config.entities.forEach((item, index) => {
       const opt = document.createElement("option");
@@ -104,12 +114,24 @@ class SceneDimmerCard extends HTMLElement {
 
     this._updateSliderValue(slider);
 
-    slider.addEventListener("focus", () => {
+    const startSliderInteraction = () => {
       this._isInteracting = true;
+    };
+    const endSliderInteraction = () => {
+      setTimeout(() => {
+        this._isInteracting = false;
+      }, 150);
+    };
+
+    slider.addEventListener("focus", startSliderInteraction);
+    slider.addEventListener("blur", endSliderInteraction);
+    slider.addEventListener("mousedown", startSliderInteraction);
+    slider.addEventListener("mouseup", endSliderInteraction);
+    slider.addEventListener("touchstart", startSliderInteraction, {
+      passive: true,
     });
-    slider.addEventListener("blur", () => {
-      this._isInteracting = false;
-    });
+    slider.addEventListener("touchend", endSliderInteraction);
+    slider.addEventListener("touchcancel", endSliderInteraction);
 
     slider.addEventListener("input", (e) => {
       const value = parseInt(e.target.value, 10);
@@ -240,6 +262,7 @@ class SceneDimmerCardEditor extends HTMLElement {
 
     this._config.entities.forEach((item, index) => {
       const row = document.createElement("tr");
+      row.style.borderBottom = "1px solid var(--divider-color)";
 
       const nameCell = document.createElement("td");
       const nameInput = document.createElement("input");
@@ -252,7 +275,7 @@ class SceneDimmerCardEditor extends HTMLElement {
         this._config = cfg;
         this._fireConfigChanged();
       });
-      nameCell.style.padding = "4px 8px";
+      nameCell.style.padding = "6px 8px";
       nameCell.appendChild(nameInput);
 
       const sceneCell = document.createElement("td");
@@ -291,7 +314,7 @@ class SceneDimmerCardEditor extends HTMLElement {
         this._fireConfigChanged();
       });
 
-      sceneCell.style.padding = "4px 8px";
+      sceneCell.style.padding = "6px 8px";
       sceneCell.appendChild(sceneSelect);
 
       const lightCell = document.createElement("td");
@@ -324,14 +347,20 @@ class SceneDimmerCardEditor extends HTMLElement {
         this._fireConfigChanged();
       });
 
-      lightCell.style.padding = "4px 8px";
+      lightCell.style.padding = "6px 8px";
       lightCell.appendChild(lightSelect);
 
       const actionsCell = document.createElement("td");
-      actionsCell.style.padding = "4px 8px";
-      const deleteBtn = document.createElement("mwc-icon-button");
-      deleteBtn.icon = "mdi:delete";
+      actionsCell.style.padding = "6px 8px";
+      actionsCell.style.textAlign = "right";
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "✕";
       deleteBtn.title = "Zeile löschen";
+      deleteBtn.style.border = "none";
+      deleteBtn.style.background = "transparent";
+      deleteBtn.style.color = "var(--error-color)";
+      deleteBtn.style.cursor = "pointer";
+      deleteBtn.style.fontSize = "1.1rem";
       deleteBtn.addEventListener("click", () => {
         const cfg = this._cloneConfig();
         cfg.entities.splice(index, 1);
