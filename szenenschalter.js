@@ -1,9 +1,20 @@
 class SceneDimmerCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement("scene-dimmer-card-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      title: "Szenenschalter",
+      entities: [],
+    };
+  }
+
   setConfig(config) {
-    if (!config.entities || !Array.isArray(config.entities) || config.entities.length === 0) {
-      throw new Error("entities ist erforderlich und muss ein Array sein.");
+    this._config = config || {};
+    if (!Array.isArray(this._config.entities)) {
+      this._config.entities = [];
     }
-    this._config = config;
     this._selectedIndex = 0;
     this.innerHTML = "";
   }
@@ -267,10 +278,6 @@ class SceneDimmerCardEditor extends HTMLElement {
 }
 
 customElements.define("scene-dimmer-card-editor", SceneDimmerCardEditor);
-
-// Verknüpfung mit Card-Picker / Lovelace
-SceneDimmerCard.getConfigElement = () =>
-  document.createElement("scene-dimmer-card-editor");
 
 // Metadata für Home Assistant Card-Picker (Custom Card)
 window.customCards = window.customCards || [];
